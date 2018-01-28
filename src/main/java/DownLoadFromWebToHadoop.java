@@ -120,13 +120,16 @@ public class DownLoadFromWebToHadoop {
 
 	public static void main(String[] args) throws IOException {
 		String dir = args[0];
-		for (int i = 1; i < args.length; ++i) {
+		String fileType = args[1];
+		for (int i = 2; i < args.length; ++i) {
 			String[] filePath = args[i].split("/");
 			String zipFileName = filePath[filePath.length - 1];
 
 			download(dir, args[i]);
-			decompress(dir, zipFileName);
-			delete(dir, zipFileName);
+			if (fileType == "z") {
+				decompress(dir, zipFileName);
+				delete(dir, zipFileName);			
+			}
 		}
 	}
 }
