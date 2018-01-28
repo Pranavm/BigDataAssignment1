@@ -1,9 +1,9 @@
+
 // Downloads zip file from web to hadoop
 // And decompresses it
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 
@@ -16,14 +16,23 @@ import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.util.Progressable;
 
 public class DownLoadFromWebToHadoop {
-	public static void download(String src, String dst) {
-		URL url = null;
-		try {
-			url = new URL(src);
-		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+	public static String getFullPath(String dir, String fileName) {
+		if (dir.charAt(dir.length() - 1) == '/') {
+			dir += fileName;
+		} else {
+			dir += "/" + fileName;
 		}
+		return dir;
+	}
+
+	public static void download(String dir, String src) throws IOException {
+		URL url = null;
+		url = new URL(src);
+
+		String[] path = src.split("/");
+
+		String dst = getFullPath(dir, path[path.length - 1]);
 
 		Configuration conf = new Configuration();
 		conf.addResource(new Path("/usr/local/hadoop-2.4.1/etc/hadoop/core-site.xml"));
@@ -38,37 +47,24 @@ public class DownLoadFromWebToHadoop {
 		}
 
 		FileSystem fs = null;
-		try {
-			fs = FileSystem.get(URI.create(dst), conf);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		OutputStream out = null;
-		try {
-			out = fs.create(new Path(dst), new Progressable() {
-				public void progress() {
-					System.out.print(".");
-				}
-			});
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 
-		try {
-			IOUtils.copyBytes(in, out, 4096, true);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		fs = FileSystem.get(URI.create(dst), conf);
+
+		OutputStream out = null;
+		out = fs.create(new Path(dst), new Progressable() {
+			public void progress() {
+				System.out.print(".");
+			}
+		});
+
+		IOUtils.copyBytes(in, out, 4096, true);
 
 	}
 
-	public static void decompress(String uri) {
+	public static void decompress(String dir, String fileName) {
+
+		String uri = getFullPath(dir, fileName);
+
 		Configuration conf = new Configuration();
 		FileSystem fs = null;
 		try {
@@ -103,10 +99,34 @@ public class DownLoadFromWebToHadoop {
 		}
 	}
 
-	public static void main(String[] args) {
-		String src = args[0];
-		String dst = args[1];
-		download(src, dst);
-		decompress(dst);
+	private static void delete(String dir, String fileName) {
+		// TODO Auto-generated method stub
+		String uri = getFullPath(dir, fileName);
+
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/usr/local/hadoop-2.4.1/etc/hadoop/core-site.xml"));
+		conf.addResource(new Path("/usr/local/hadoop-2.4.1/etc/hadoop/hdfs-site.xml"));
+
+		FileSystem fs = null;
+		Path path = new Path(uri);
+		try {
+			fs = FileSystem.get(conf);
+			fs.delete(path, false);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+		String dir = args[0];
+		for (int i = 1; i < args.length; ++i) {
+			String[] filePath = args[i].split("/");
+			String zipFileName = filePath[filePath.length - 1];
+
+			download(dir, args[i]);
+			decompress(dir, zipFileName);
+			delete(dir, zipFileName);
+		}
 	}
 }
