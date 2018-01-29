@@ -26,5 +26,5 @@ From a machine where hadoop is running run the following command to run the code
 ```
 
 The package only contains the DownLoadFromWebToHadoop class. The class takes as its first argument the hadoop directory to store the downloaded files. This should be of the form hdfs://....  
-Next argument is the type of the file to be downloaded. Specify "z" if the file type is an archive and you want to extract it. Any value other than see will be ignored.  
-This can be followed by any number of urls to download. The urls should ideally points to archived files as the program tries to extract this file.
+This can be followed by any number of urls to download.
+The program extracts the downloaded files. If they are archived.

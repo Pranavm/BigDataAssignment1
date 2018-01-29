@@ -1,11 +1,19 @@
 
-// Downloads zip file from web to hadoop
+// Downloads file from web to hadoop
 // And decompresses it
+// Supports zip and bz2
+// Does not work when zip file contains a directory
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -16,6 +24,8 @@ import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.util.Progressable;
 
 public class DownLoadFromWebToHadoop {
+
+	private static final int BUFFER_SIZE = 4096;
 
 	public static String getFullPath(String dir, String fileName) {
 		if (dir.charAt(dir.length() - 1) == '/') {
@@ -99,8 +109,32 @@ public class DownLoadFromWebToHadoop {
 		}
 	}
 
-	private static void delete(String dir, String fileName) {
-		// TODO Auto-generated method stub
+	private static void decompressZipFile(String dir, String zipFileName) throws IOException {
+		InputStream in = null;
+
+		Path uri = new Path(getFullPath(dir, zipFileName));
+
+		Configuration conf = new Configuration();
+		FileSystem fs = null;
+		fs = FileSystem.get(conf);
+
+		in = fs.open(uri);
+
+		OutputStream out = null;
+
+		ZipInputStream zin = new ZipInputStream(in);
+		ZipEntry entry = zin.getNextEntry();
+
+		while (entry != null) {
+			Path p = new Path(getFullPath(dir, entry.getName()));
+			out = fs.create(p);
+			IOUtils.copyBytes(zin, out, 4096);
+			zin.closeEntry();
+			entry = zin.getNextEntry();
+		}
+	}
+
+	private static void delete(String dir, String fileName) throws IOException {
 		String uri = getFullPath(dir, fileName);
 
 		Configuration conf = new Configuration();
@@ -109,26 +143,25 @@ public class DownLoadFromWebToHadoop {
 
 		FileSystem fs = null;
 		Path path = new Path(uri);
-		try {
-			fs = FileSystem.get(conf);
-			fs.delete(path, false);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+		fs = FileSystem.get(conf);
+		fs.delete(path, false);
 	}
 
 	public static void main(String[] args) throws IOException {
 		String dir = args[0];
-		String fileType = args[1];
-		for (int i = 2; i < args.length; ++i) {
+		for (int i = 1; i < args.length; ++i) {
 			String[] filePath = args[i].split("/");
 			String zipFileName = filePath[filePath.length - 1];
+			String[] file = zipFileName.split("\\.");
+			String fileExtn = file[file.length - 1];
 
 			download(dir, args[i]);
-			if (fileType == "z") {
+			if (fileExtn.equals("bz2")) {
 				decompress(dir, zipFileName);
-				delete(dir, zipFileName);			
+				delete(dir, zipFileName);
+			} else if (fileExtn.equals("zip")) {
+				decompressZipFile(dir, zipFileName);
+				delete(dir, zipFileName);
 			}
 		}
 	}
